@@ -137,23 +137,17 @@ class ModelConnector:
         model = AutoModelForCausalLM.from_pretrained(
             model_info["model"], torch_dtype="auto", device_map="auto"
         )
-        model.eval()
 
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        prompt = tokenizer.apply_chat_template(
-            messages, tokenizer=False, add_generation_prompt=True
-        )
-        token_ids = tokenizer.encode(
-            prompt, add_special_tokens=False, return_tensors="pt"
-        )
+        tokenized_input = tokenizer.apply_chat_template(
+            messages, tokenizer=True, add_generation_prompt=True, return_tensors="pt"
+        ).to(model.device)
 
         with torch.no_grad():
-            output_ids = model.generate(token_ids.to(model.device))
+            output = model.generate(tokenized_input)[0]
 
-        output = tokenizer.decode(
-            output_ids.tolist()[0][token_ids.size(1) :], skip_special_tokens=True
-        )
-        return output
+        text = tokenizer.decode(output)
+        return text
